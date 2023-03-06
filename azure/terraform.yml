@@ -1,0 +1,38 @@
+trigger: none
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: TerraformInstaller@0
+    displayName: 'Install Terraform'
+
+  - task: TerraformCLI@0
+    displayName: 'Terraform: Init'
+    inputs:
+      command: init
+      backendType: azurerm
+      workingDirectory: terraform
+      ensureBackend: true
+      backendServiceArm: 'SC_FSM_AKKA'
+      backendAzureRmResourceGroupName: 'fsm-akka'
+      backendAzureRmResourceGroupLocation: 'germanywestcentral'
+      backendAzureRmStorageAccountSku: 'Standard_RAGRS'
+
+  - task: TerraformCLI@0
+    displayName: 'Terraform: plan'
+    inputs:
+      command: plan
+      workingDirectory: terraform
+      publishPlanResults: 'main'
+      environmentServiceName: 'SC_FSM_AKKA'
+      commandOptions: "-lock: false -out=$(System.DefaultWorkingDirectory)/terraform/main.tfplan -detailed-exitcode"
+
+  - task: TerraformCLI@0
+    displayName: 'Terraform: apply'
+    condition: and(succeeded(), eq(variables['TERRAFORM_PLAN_HAS_CHANGES'], 'true'))
+    inputs:
+      command: apply
+      workingDirectory: terraform
+      commandOptions: '$(System.DefaultWorkingDirectory)/terraform/main.tfplan'
+      environmentServiceName: 'SC_FSM_AKKA'
