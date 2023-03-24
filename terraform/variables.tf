@@ -39,10 +39,12 @@ variable "ssh_public_key" {
 
 variable "aks_service_principal_app_id" {
   default = ""
+  sensitive = true
 }
 
 variable "aks_service_principal_client_secret" {
   default = ""
+  sensitive = true
 }
 
 variable "dns_prefix" {
