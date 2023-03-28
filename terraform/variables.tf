@@ -50,3 +50,7 @@ variable "aks_service_principal_client_secret" {
 variable "dns_prefix" {
   default = "fsmakkaAKS-test-dns"
 }
+
+variable "environment" {
+  default = "dev"
+}

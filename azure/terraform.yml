@@ -1,5 +1,10 @@
 trigger: none
 
+parameters:
+  - name: clusterName
+    type: string
+  - name: environment
+    type: string
 pool:
   vmImage: ubuntu-latest
 
@@ -14,38 +19,40 @@ steps:
   - task: TerraformCLI@0
     name: TerraformInit
     displayName: 'Terraform: Init'
-    needs: TerraformInstaller
     inputs:
       command: init
       backendType: azurerm
       workingDirectory: terraform
       ensureBackend: true
       backendServiceArm: 'SC_FSM_AKKA'
+      backendAzureRmStorageAccountName: 'fsmakka-storage'
       backendAzureRmResourceGroupName: 'fsm-akka'
       backendAzureRmResourceGroupLocation: 'germanywestcentral'
       backendAzureRmStorageAccountSku: 'Standard_RAGRS'
     env:
-      TF_VAR_aks_service_principal_app_id=${SP_ID}
-      TF_VAR_aks_service_principal_client_secret=${SP_CLIENT_SECRET}
+      TF_VAR_aks_service_principal_app_id: $(SP-ID)
+      TF_VAR_aks_service_principal_client_secret: $(SP-CLIENT-SECRET)
+      TF_VAR_cluster_name: {{ parameters.clusterName }}
+      TF_VAR_environment: {{ parameters.environment }}
 
   - task: TerraformCLI@0
     name: TerraformPlan
     displayName: 'Terraform: plan'
-    needs: TerraformInit
     inputs:
       command: plan
       workingDirectory: terraform
       publishPlanResults: 'main'
       environmentServiceName: 'SC_FSM_AKKA'
-      commandOptions: "-lock: false -out=$(System.DefaultWorkingDirectory)/terraform/main.tfplan -detailed-exitcode"
+      commandOptions: "-lock=false -out=$(System.DefaultWorkingDirectory)/terraform/main.tfplan -detailed-exitcode"
     env:
-      TF_VAR_aks_service_principal_app_id=${SP_ID}
-      TF_VAR_aks_service_principal_client_secret=${SP_CLIENT_SECRET}
+      TF_VAR_aks_service_principal_app_id: $(SP-ID)
+      TF_VAR_aks_service_principal_client_secret: $(SP-CLIENT-SECRET)
+      TF_VAR_cluster_name: { { parameters.clusterName } }
+      TF_VAR_environment: { { parameters.environment } }
 
   - task: TerraformCLI@0
     name: TerraformApply
     displayName: 'Terraform: apply'
-    needs: TerraformPlan
     condition: and(succeeded(), eq(variables['TERRAFORM_PLAN_HAS_CHANGES'], 'true'))
     inputs:
       command: apply
@@ -53,5 +60,7 @@ steps:
       commandOptions: '$(System.DefaultWorkingDirectory)/terraform/main.tfplan'
       environmentServiceName: 'SC_FSM_AKKA'
     env:
-      TF_VAR_aks_service_principal_app_id=${SP_ID}
-      TF_VAR_aks_service_principal_client_secret=${SP_CLIENT_SECRET}
+      TF_VAR_aks_service_principal_app_id: $(SP-ID)
+      TF_VAR_aks_service_principal_client_secret: $(SP-CLIENT-SECRET)
+      TF_VAR_cluster_name: { { parameters.clusterName } }
+      TF_VAR_environment: { { parameters.environment } }
